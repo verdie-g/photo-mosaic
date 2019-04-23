@@ -13,6 +13,7 @@ const MMCQ_MAX_COLOR: u32 = 256;
 const THUMBNAIL_SIZE: u32 = 64;
 const CHUNK_SIZE: u32 = 32;
 const METADATA_FILENAME: &str = "mosaic.json";
+const COLOR_DISTANCE_WEIGHTS: [i32; 3] = [22, 43, 35];
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ProcessedPictureMetadata {
@@ -127,11 +128,11 @@ fn load_processed_pictures_metadata(
 
 fn color_distance(c1: [u8; 3], c2: [u8; 3]) -> u32 {
     // http://godsnotwheregodsnot.blogspot.com/2011/09/weighted-euclidean-color-distance.html
-    let dr = i32::from(c1[0]) - i32::from(c2[0]);
-    let dg = i32::from(c1[1]) - i32::from(c2[1]);
-    let db = i32::from(c1[2]) - i32::from(c2[2]);
-
-    f64::from((22 * dr).pow(2) + (43 * dg).pow(2) + (35 * db).pow(2)).sqrt() as u32
+    let mut a = 0;
+    for i in 0..3 {
+        a += (COLOR_DISTANCE_WEIGHTS[i] * (i32::from(c1[i]) - i32::from(c2[i]))).pow(2);
+    }
+    f64::from(a).sqrt() as u32
 }
 
 fn find_closest_pic_by_color(pics: &[ProcessedPicture], color: [u8; 3]) -> &ProcessedPicture {
