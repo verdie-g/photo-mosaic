@@ -125,21 +125,19 @@ fn load_processed_pictures_metadata(
     Ok(metadata)
 }
 
-fn color_distance(c1: &[u8; 3], c2: &[u8; 3]) -> u32 {
+fn color_distance(c1: [u8; 3], c2: [u8; 3]) -> u32 {
     // http://godsnotwheregodsnot.blogspot.com/2011/09/weighted-euclidean-color-distance.html
-    (((22 * (c1[0] as i32 - c2[0] as i32)).pow(2)
-        + (43 * (c1[1] as i32 - c2[1] as i32)).pow(2)
-        + (34 * (c1[2] as i32 - c2[2] as i32)).pow(2)) as f64)
-        .sqrt() as u32
+    let dr = i32::from(c1[0]) - i32::from(c2[0]);
+    let dg = i32::from(c1[1]) - i32::from(c2[1]);
+    let db = i32::from(c1[2]) - i32::from(c2[2]);
+
+    f64::from((22 * dr).pow(2) + (43 * dg).pow(2) + (35 * db).pow(2)).sqrt() as u32
 }
 
-fn find_closest_pic_by_color<'a>(
-    pics: &'a [ProcessedPicture],
-    color: &[u8; 3],
-) -> &'a ProcessedPicture {
-    let mut closest = (&pics[0], color_distance(&pics[0].color_rgb, color));
+fn find_closest_pic_by_color(pics: &[ProcessedPicture], color: [u8; 3]) -> &ProcessedPicture {
+    let mut closest = (&pics[0], color_distance(pics[0].color_rgb, color));
     for i in 1..pics.len() {
-        let dist = color_distance(&pics[i].color_rgb, color);
+        let dist = color_distance(pics[i].color_rgb, color);
         if dist == 0 {
             return &pics[i];
         }
@@ -186,7 +184,7 @@ fn create_mosaic(
     let mut x = 0;
     let mut y = 0;
     for color in color_by_chunk {
-        let pic = find_closest_pic_by_color(pics, &color);
+        let pic = find_closest_pic_by_color(pics, color);
         let thumb_path = processed_folder.join(&pic.path);
         let thumb = image::open(thumb_path).unwrap();
         assert!(res.copy_from(&thumb, x, y));
