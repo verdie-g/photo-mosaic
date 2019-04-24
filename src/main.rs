@@ -163,9 +163,9 @@ fn compute_main_color_by_chunk(img: &DynamicImage, chunk_w: u32, chunk_h: u32) -
     let mut res = Vec::new();
     let (w, h) = img.dimensions();
     let mut y = 0;
-    while y < h {
+    while y + chunk_h <= h {
         let mut x = 0;
-        while x < w {
+        while x + chunk_w <= w {
             let chunk = img.view(x, y, chunk_w, chunk_h);
             res.push(compute_main_color(&chunk.to_image()));
             x += chunk_w;
