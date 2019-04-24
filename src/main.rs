@@ -1,6 +1,5 @@
 use image::GenericImageView;
-use image::{self, DynamicImage, GenericImage, ImageBuffer, Rgba, SubImage};
-use mcq;
+use image::{self, DynamicImage, GenericImage, ImageBuffer, Rgba};
 use num::Integer;
 use serde_derive::{Deserialize, Serialize};
 use std::error::Error;
@@ -9,11 +8,11 @@ use std::io::{BufReader, BufWriter};
 use std::path::Path;
 use walkdir::{DirEntry, WalkDir};
 
-const MMCQ_MAX_COLOR: u32 = 256;
+const CONTRAST_ADJUSTMENT: f32 = 20.0;
 const THUMBNAIL_SIZE: u32 = 64;
-const CHUNK_SIZE: u32 = 32;
+const CHUNK_SIZE: u32 = 8;
 const METADATA_FILENAME: &str = "mosaic.json";
-const COLOR_DISTANCE_WEIGHTS: [i32; 3] = [22, 43, 35];
+const COLOR_DISTANCE_WEIGHTS: [i32; 3] = [1, 1, 1];
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ProcessedPictureMetadata {
@@ -29,9 +28,18 @@ struct ProcessedPicture {
 }
 
 fn compute_main_color(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> [u8; 3] {
-    let mmcq = mcq::MMCQ::from_pixels_u8_rgba(img, MMCQ_MAX_COLOR);
-    let palette = mmcq.get_quantized_colors();
-    [palette[0].red, palette[0].grn, palette[0].blu]
+    let mut color_sums: [u32; 3] = [0; 3];
+    for pixel in img.enumerate_pixels() {
+        for i in 0..3 {
+            color_sums[i] += u32::from(pixel.2[i]);
+        }
+    }
+
+    let mut avg_color = [0; 3];
+    for i in 0..3 {
+        avg_color[i] = (color_sums[i] / (img.width() * img.height())) as u8;
+    }
+    avg_color
 }
 
 fn compute_ratio(w: u32, h: u32) -> (u32, u32) {
@@ -77,6 +85,7 @@ fn process_pictures(files: &[walkdir::DirEntry], output_folder: &Path) -> Vec<Pr
         };
 
         let thumb = img.thumbnail(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        thumb.adjust_contrast(CONTRAST_ADJUSTMENT);
         let thumb_name = path.file_name().unwrap();
         let thumb_path = output_folder.join(thumb_name);
         if thumb.save(&thumb_path).is_err() {
