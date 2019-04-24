@@ -64,6 +64,10 @@ fn files_from_folder(folder_path: &str) -> impl Iterator<Item = DirEntry> {
 }
 
 fn process_pictures(files: &[walkdir::DirEntry], output_folder: &Path) -> Vec<ProcessedPicture> {
+    if !output_folder.exists() {
+        fs::create_dir(&output_folder).unwrap();
+    }
+
     let mut res = Vec::new();
 
     let files_nb = files.len();
@@ -114,10 +118,6 @@ fn save_processed_pictures_metadata(
     metadata: &ProcessedPictureMetadata,
     processed_folder: &Path,
 ) -> Result<(), Box<Error>> {
-    if !processed_folder.exists() {
-        fs::create_dir(&processed_folder).unwrap();
-    }
-
     let path = processed_folder.join(METADATA_FILENAME);
     let file = File::create(path)?;
     let writer = BufWriter::new(file);
