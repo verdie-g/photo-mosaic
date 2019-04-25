@@ -1,7 +1,8 @@
 use image::GenericImageView;
-use image::{self, DynamicImage, GenericImage, ImageBuffer, Rgba};
+use image::{self, imageops, DynamicImage, GenericImage, ImageBuffer, Rgba, SubImage};
 use num::Integer;
 use serde_derive::{Deserialize, Serialize};
+use std::cmp;
 use std::error::Error;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter};
@@ -63,6 +64,15 @@ fn files_from_folder(folder_path: &str) -> impl Iterator<Item = DirEntry> {
         .filter(|entry| entry.file_type().is_file())
 }
 
+fn image_square_view(img: &DynamicImage) -> SubImage<&DynamicImage> {
+    let (w, h) = img.dimensions();
+    let square_size = cmp::min(w, h);
+
+    let x_offset = (w - square_size) / 2;
+    let y_offset = (h - square_size) / 2;
+    img.view(x_offset, y_offset, square_size, square_size)
+}
+
 fn process_pictures(files: &[walkdir::DirEntry], output_folder: &Path) -> Vec<ProcessedPicture> {
     if !output_folder.exists() {
         fs::create_dir(&output_folder).unwrap();
@@ -88,8 +98,9 @@ fn process_pictures(files: &[walkdir::DirEntry], output_folder: &Path) -> Vec<Pr
             compute_ratio(w, h)
         };
 
-        let thumb = img.thumbnail(THUMBNAIL_SIZE, THUMBNAIL_SIZE);
-        thumb.adjust_contrast(CONTRAST_ADJUSTMENT);
+        let square = image_square_view(&img);
+        let thumb = imageops::thumbnail(&square, THUMBNAIL_SIZE, THUMBNAIL_SIZE);
+        let thumb = imageops::contrast(&thumb, CONTRAST_ADJUSTMENT);
         let thumb_name = path.file_name().unwrap();
         let thumb_path = output_folder.join(thumb_name);
         if thumb.save(&thumb_path).is_err() {
