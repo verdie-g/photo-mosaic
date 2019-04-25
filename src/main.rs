@@ -58,7 +58,7 @@ fn ratio_to_dim(ratio: (u32, u32), size: u32) -> (u32, u32) {
     }
 }
 
-fn files_from_folder(folder_path: &str) -> impl Iterator<Item = DirEntry> {
+fn files_from_folder(folder_path: &Path) -> impl Iterator<Item = DirEntry> {
     WalkDir::new(folder_path)
         .into_iter()
         .filter_map(Result::ok)
@@ -222,7 +222,7 @@ fn create_mosaic(
 }
 
 fn cmd_preprocess(gallery_folder: &Path, output_folder: &Path) {
-    let files: Vec<_> = files_from_folder("/home/greg/Downloads/Takeout/Google Photos").collect();
+    let files: Vec<_> = files_from_folder(gallery_folder).collect();
     let metadata = ProcessedPictureMetadata { pictures: process_pictures(&files, output_folder) };
     save_processed_pictures_metadata(&metadata, output_folder).unwrap();
 }
