@@ -49,6 +49,10 @@ fn compute_ratio(w: u32, h: u32) -> (u32, u32) {
 }
 
 fn ratio_to_dim(ratio: (u32, u32), size: u32) -> (u32, u32) {
+    if ratio.0 == ratio.1 {
+        return (size, size);
+    }
+
     let ratio_f = ratio.0 as f32 / ratio.1 as f32;
     if ratio_f > 1.0 {
         (size, (size * ratio.1 / ratio.0) as u32)
@@ -230,20 +234,10 @@ fn cmd_create(preprocessed_folder: &Path, model: &Path, output_image: &Path) {
 
     let model = image::open(model).unwrap();
     let (w, h) = model.dimensions();
-    let ratio = compute_ratio(w, h);
-    let pics: Vec<_> = metadata
-        .pictures
-        .into_iter()
-        .filter(|pic| pic.ratio_width == ratio.0 && pic.ratio_height == ratio.1)
-        .collect();
+    let ratio = (1, 1); // compute_ratio(w, h);
 
-    if pics.is_empty() {
-        eprintln!("No processed pictures found with the same ratio ({}/{})", ratio.0, ratio.1);
-        std::process::exit(1);
-    }
-
-    println!("{} pictures found with the same ratio ({}/{})", pics.len(), ratio.0, ratio.1);
-    let mosaic = create_mosaic(&model, preprocessed_folder, &pics, ratio);
+    println!("{} pictures available", metadata.pictures.len());
+    let mosaic = create_mosaic(&model, preprocessed_folder, &metadata.pictures, ratio);
     mosaic.save(output_image).unwrap();
 }
 
