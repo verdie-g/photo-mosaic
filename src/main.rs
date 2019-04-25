@@ -14,7 +14,6 @@ const CONTRAST_ADJUSTMENT: f32 = 20.0;
 const THUMBNAIL_SIZE: u32 = 64;
 const CHUNK_SIZE: u32 = 8;
 const METADATA_FILENAME: &str = "mosaic.json";
-const COLOR_DISTANCE_WEIGHTS: [i32; 3] = [1, 1, 1];
 
 #[derive(Serialize, Deserialize, Debug)]
 struct ProcessedPictureMetadata {
@@ -148,10 +147,9 @@ fn load_processed_pictures_metadata(
 }
 
 fn color_distance(c1: [u8; 3], c2: [u8; 3]) -> u32 {
-    // http://godsnotwheregodsnot.blogspot.com/2011/09/weighted-euclidean-color-distance.html
     let mut a = 0;
     for i in 0..3 {
-        a += (COLOR_DISTANCE_WEIGHTS[i] * (i32::from(c1[i]) - i32::from(c2[i]))).pow(2);
+        a += (i32::from(c1[i]) - i32::from(c2[i])).pow(2);
     }
     f64::from(a).sqrt() as u32
 }
