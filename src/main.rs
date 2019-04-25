@@ -1,3 +1,4 @@
+use clap::{App, Arg, SubCommand};
 use image::GenericImageView;
 use image::{self, imageops, DynamicImage, GenericImage, ImageBuffer, Rgba, SubImage};
 use num::Integer;
@@ -220,19 +221,16 @@ fn create_mosaic(
     res
 }
 
-fn main() {
-    // let files: Vec<_> = files_from_folder("/home/greg/Downloads/Takeout/Google Photos").collect();
+fn cmd_preprocess(gallery_folder: &Path, output_folder: &Path) {
+    let files: Vec<_> = files_from_folder("/home/greg/Downloads/Takeout/Google Photos").collect();
+    let metadata = ProcessedPictureMetadata { pictures: process_pictures(&files, output_folder) };
+    save_processed_pictures_metadata(&metadata, output_folder).unwrap();
+}
 
-    let processed_folder = Path::new("./processed");
+fn cmd_create(preprocessed_folder: &Path, model: &Path, output_image: &Path) {
+    let metadata = load_processed_pictures_metadata(preprocessed_folder).unwrap();
 
-    /*
-    let metadata =
-        ProcessedPictureMetadata { pictures: process_pictures(&files, &processed_folder) };
-    save_processed_pictures_metadata(&metadata, &processed_folder).unwrap();
-    */
-    let metadata = load_processed_pictures_metadata(&processed_folder).unwrap();
-
-    let model = image::open("./bruxelles.jpg").unwrap();
+    let model = image::open(model).unwrap();
     let (w, h) = model.dimensions();
     let ratio = compute_ratio(w, h);
     let pics: Vec<_> = metadata
@@ -247,6 +245,66 @@ fn main() {
     }
 
     println!("{} pictures found with the same ratio ({}/{})", pics.len(), ratio.0, ratio.1);
-    let mosaic = create_mosaic(&model, &processed_folder, &pics, ratio);
-    mosaic.save("mosaic.jpg").unwrap();
+    let mosaic = create_mosaic(&model, preprocessed_folder, &pics, ratio);
+    mosaic.save(output_image).unwrap();
+}
+
+fn main() {
+    let matches = App::new("Photo Mosaic")
+        .version("0.1")
+        .author("verdie-g <gregoire.verdier@gmail.com>")
+        .about("Create a photo mosaic")
+        .subcommands(vec![
+            SubCommand::with_name("preprocess")
+                .about("Recursively traverses your gallery to preprocess all image files")
+                .arg(
+                    Arg::with_name("gallery_folder")
+                        .help("Sets the path of your gallery")
+                        .index(1)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("output_folder")
+                        .help("Sets the path of the output folder for the processed images")
+                        .index(2)
+                        .required(true),
+                ),
+            SubCommand::with_name("create")
+                .about("Create a photo mosaic from a preprocessed gallery and a model image")
+                .arg(
+                    Arg::with_name("preprocessed_folder")
+                        .help("Sets the path of the folder with the preprocessed pictures")
+                        .index(1)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("model")
+                        .help("Sets the path of image model")
+                        .index(2)
+                        .required(true),
+                )
+                .arg(
+                    Arg::with_name("output_image")
+                        .help("Sets the output path of the created mosaic")
+                        .index(3)
+                        .required(true),
+                ),
+        ])
+        .get_matches();
+
+    match matches.subcommand() {
+        ("preprocess", Some(cmd_matches)) => {
+            let gallery_folder = Path::new(cmd_matches.value_of("gallery_folder").unwrap());
+            let output_folder = Path::new(cmd_matches.value_of("output_folder").unwrap());
+            cmd_preprocess(gallery_folder, output_folder);
+        }
+        ("create", Some(cmd_matches)) => {
+            let preprocessed_folder =
+                Path::new(cmd_matches.value_of("preprocessed_folder").unwrap());
+            let model = Path::new(cmd_matches.value_of("model").unwrap());
+            let output_image = Path::new(cmd_matches.value_of("output_image").unwrap());
+            cmd_create(preprocessed_folder, model, output_image);
+        }
+        _ => panic!(),
+    }
 }
